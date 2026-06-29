@@ -401,7 +401,7 @@ async function initCloud() {
 
 function getCloudCredentials() {
   if (!supabaseClient) {
-    alert("请先在 supabase-config.js 中填写 Supabase URL 和 anon key。");
+    alert("Supabase 还没有初始化。请刷新页面；如果仍然出现，请检查 supabase-config.js 配置。");
     return null;
   }
 
