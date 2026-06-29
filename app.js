@@ -12,6 +12,8 @@ const TASK_CATEGORIES = ["重要且紧急", "重要不紧急", "不重要但紧�
 const TASK_TIME_BLOCKS = ["上午", "中午", "下午", "晚上"];
 
 const state = loadState();
+let supabaseClient = null;
+let cloudUser = null;
 const editing = {
   weightId: null,
   foodId: null,
@@ -74,6 +76,12 @@ const elements = {
   clearButton: document.querySelector("#clearButton"),
   exportButton: document.querySelector("#exportButton"),
   importInput: document.querySelector("#importInput"),
+  cloudStatus: document.querySelector("#cloudStatus"),
+  cloudAuthForm: document.querySelector("#cloudAuthForm"),
+  cloudSignupButton: document.querySelector("#cloudSignupButton"),
+  cloudUploadButton: document.querySelector("#cloudUploadButton"),
+  cloudDownloadButton: document.querySelector("#cloudDownloadButton"),
+  cloudLogoutButton: document.querySelector("#cloudLogoutButton"),
 };
 
 document.querySelectorAll('input[type="date"]').forEach((input) => {
@@ -86,6 +94,7 @@ elements.tabs.forEach((button) => {
 });
 
 populateCalorieTargetForm();
+initCloud();
 
 elements.calorieTargetForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -100,6 +109,32 @@ elements.calorieTargetForm.addEventListener("submit", (event) => {
     calorieDeficit: Number(data.get("calorieDeficit")),
   };
   saveAndRender();
+});
+
+elements.cloudAuthForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const credentials = getCloudCredentials();
+  if (!credentials) return;
+  await signInCloud(credentials);
+});
+
+elements.cloudSignupButton.addEventListener("click", async () => {
+  const credentials = getCloudCredentials();
+  if (!credentials) return;
+  await signUpCloud(credentials);
+});
+
+elements.cloudUploadButton.addEventListener("click", async () => {
+  await uploadCloudData();
+});
+
+elements.cloudDownloadButton.addEventListener("click", async () => {
+  await downloadCloudData();
+});
+
+elements.cloudLogoutButton.addEventListener("click", async () => {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
 });
 
 elements.favoriteFoodSelect.addEventListener("change", (event) => {
@@ -251,14 +286,7 @@ elements.importInput.addEventListener("change", async (event) => {
 
   try {
     const imported = JSON.parse(await file.text());
-    state.weights = normalizeRecords(imported.weights);
-    state.foods = normalizeRecords(imported.foods);
-    state.exercises = normalizeRecords(imported.exercises);
-    state.favoriteFoods = normalizeFavoriteFoods(imported.favoriteFoods);
-    state.tasks = normalizeTasks(imported.tasks);
-    state.settings = normalizeSettings(imported.settings);
-    populateCalorieTargetForm();
-    saveAndRender();
+    replaceState(imported);
   } catch {
     alert("导入失败，请选择之前导出的 TXT 文件。");
   } finally {
@@ -319,6 +347,168 @@ function normalizeSettings(settings) {
 function saveAndRender() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
+}
+
+function exportState() {
+  return {
+    weights: state.weights,
+    foods: state.foods,
+    exercises: state.exercises,
+    favoriteFoods: state.favoriteFoods,
+    tasks: state.tasks,
+    settings: state.settings,
+  };
+}
+
+function replaceState(data) {
+  state.weights = normalizeRecords(data?.weights);
+  state.foods = normalizeRecords(data?.foods);
+  state.exercises = normalizeRecords(data?.exercises);
+  state.favoriteFoods = normalizeFavoriteFoods(data?.favoriteFoods);
+  state.tasks = normalizeTasks(data?.tasks);
+  state.settings = normalizeSettings(data?.settings);
+  populateCalorieTargetForm();
+  saveAndRender();
+}
+
+async function initCloud() {
+  const config = window.HEALTHY_SUPABASE_CONFIG || {};
+  const isConfigured = Boolean(config.url && config.anonKey);
+  const hasClient = Boolean(window.supabase?.createClient);
+
+  if (!isConfigured) {
+    setCloudStatus("未配置 Supabase");
+    setCloudControls(false);
+    return;
+  }
+
+  if (!hasClient) {
+    setCloudStatus("Supabase 脚本未加载");
+    setCloudControls(false);
+    return;
+  }
+
+  supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+  const { data } = await supabaseClient.auth.getSession();
+  cloudUser = data.session?.user || null;
+  updateCloudAuthUi();
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    cloudUser = session?.user || null;
+    updateCloudAuthUi();
+  });
+}
+
+function getCloudCredentials() {
+  if (!supabaseClient) {
+    alert("请先在 supabase-config.js 中填写 Supabase URL 和 anon key。");
+    return null;
+  }
+
+  const form = elements.cloudAuthForm;
+  const email = String(form.elements.email.value || "").trim();
+  const password = String(form.elements.password.value || "");
+
+  if (!email || !password) {
+    alert("请输入邮箱和密码。");
+    return null;
+  }
+
+  return { email, password };
+}
+
+async function signInCloud({ email, password }) {
+  setCloudStatus("正在登录...");
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    setCloudStatus("登录失败");
+    alert(error.message);
+    return;
+  }
+  setCloudStatus("已登录");
+}
+
+async function signUpCloud({ email, password }) {
+  setCloudStatus("正在注册...");
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) {
+    setCloudStatus("注册失败");
+    alert(error.message);
+    return;
+  }
+  setCloudStatus("注册成功，请按 Supabase 设置确认邮箱或直接登录");
+}
+
+async function uploadCloudData() {
+  if (!ensureCloudSignedIn()) return;
+  setCloudStatus("正在上传...");
+  const { error } = await supabaseClient.from("health_records").upsert({
+    user_id: cloudUser.id,
+    data: exportState(),
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    setCloudStatus("上传失败");
+    alert(error.message);
+    return;
+  }
+
+  setCloudStatus("已上传云端");
+}
+
+async function downloadCloudData() {
+  if (!ensureCloudSignedIn()) return;
+  setCloudStatus("正在读取...");
+  const { data, error } = await supabaseClient
+    .from("health_records")
+    .select("data")
+    .eq("user_id", cloudUser.id)
+    .maybeSingle();
+
+  if (error) {
+    setCloudStatus("读取失败");
+    alert(error.message);
+    return;
+  }
+
+  if (!data?.data) {
+    setCloudStatus("云端暂无数据");
+    return;
+  }
+
+  replaceState(data.data);
+  setCloudStatus("已读取云端数据");
+}
+
+function ensureCloudSignedIn() {
+  if (!supabaseClient) {
+    alert("请先配置 Supabase。");
+    return false;
+  }
+
+  if (!cloudUser) {
+    alert("请先登录账号。");
+    return false;
+  }
+
+  return true;
+}
+
+function updateCloudAuthUi() {
+  const signedIn = Boolean(cloudUser);
+  setCloudStatus(signedIn ? `已登录：${cloudUser.email}` : "未登录");
+  setCloudControls(signedIn);
+}
+
+function setCloudControls(signedIn) {
+  elements.cloudUploadButton.disabled = !signedIn;
+  elements.cloudDownloadButton.disabled = !signedIn;
+  elements.cloudLogoutButton.disabled = !signedIn;
+}
+
+function setCloudStatus(message) {
+  elements.cloudStatus.textContent = message;
 }
 
 function populateCalorieTargetForm() {

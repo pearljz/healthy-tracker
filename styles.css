@@ -275,6 +275,67 @@ button {
   display: none;
 }
 
+.cloud-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(280px, 1.4fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid rgba(0, 183, 119, 0.28);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(220, 255, 233, 0.76));
+  box-shadow: 0 10px 26px rgba(29, 37, 33, 0.08);
+}
+
+.cloud-panel h3,
+.cloud-panel p {
+  margin: 0;
+}
+
+.cloud-panel span {
+  display: block;
+  margin-top: 4px;
+  color: #24724f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cloud-form,
+.cloud-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cloud-form input {
+  min-width: 0;
+}
+
+.cloud-form button,
+.cloud-actions button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 138, 85, 0.2);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #008a55;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.cloud-form button[type="submit"],
+#cloudUploadButton {
+  border: 0;
+  background: #00a868;
+  color: #ffffff;
+}
+
+.cloud-form button:disabled,
+.cloud-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .view {
   display: none;
 }
@@ -709,6 +770,10 @@ button:focus-visible {
   .task-panel {
     grid-column: auto;
   }
+
+  .cloud-panel {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -731,6 +796,14 @@ button:focus-visible {
   .icon-button {
     flex: 1;
     width: auto;
+  }
+
+  .cloud-panel,
+  .cloud-form,
+  .cloud-actions {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .record-item {
