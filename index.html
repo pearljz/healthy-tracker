@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>健康记录</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="健康记录概览">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M24 5c8 0 15 6 15 14 0 13-15 24-15 24S9 32 9 19C9 11 16 5 24 5Z" />
+              <path d="M17 23h5l3-8 4 16 3-8h5" />
+            </svg>
+          </div>
+          <div>
+            <h1>健康记录</h1>
+            <p>体重、饮食和运动</p>
+          </div>
+        </div>
+
+        <section class="today-card" aria-label="今日概览">
+          <p class="eyebrow">今天</p>
+          <h2 id="todayDate">--</h2>
+          <div class="rings" aria-hidden="true">
+            <div class="ring ring-weight"></div>
+            <div class="ring ring-food"></div>
+            <div class="ring ring-sport"></div>
+          </div>
+          <div class="mini-stats">
+            <span><strong id="todayWeight">--</strong> kg</span>
+            <span><strong id="todayCalories">0</strong> kcal</span>
+            <span><strong id="todayMinutes">0</strong> min</span>
+          </div>
+        </section>
+
+        <nav class="quick-tabs" aria-label="记录分类">
+          <button class="tab-button active" data-view="dashboard" type="button">
+            <span aria-hidden="true">⌂</span>
+            总览
+          </button>
+          <button class="tab-button" data-view="records" type="button">
+            <span aria-hidden="true">＋</span>
+            记录
+          </button>
+          <button class="tab-button" data-view="history" type="button">
+            <span aria-hidden="true">≡</span>
+            历史
+          </button>
+        </nav>
+      </aside>
+
+      <section class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Personal dashboard</p>
+            <h2>把身体变化记清楚</h2>
+          </div>
+          <div class="actions">
+            <button class="icon-button" id="exportButton" type="button" title="导出数据" aria-label="导出数据">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" />
+              </svg>
+            </button>
+            <label class="icon-button import-button" title="导入数据" aria-label="导入数据">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 21V9m0 0 5 5m-5-5-5 5M5 3h14" />
+              </svg>
+              <input id="importInput" type="file" accept=".txt,text/plain" />
+            </label>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboardView">
+          <div class="metric-grid">
+            <article class="metric weight-metric">
+              <span>最新体重</span>
+              <strong><span id="latestWeight">--</span> kg</strong>
+              <small id="weightChange">还没有趋势</small>
+            </article>
+            <article class="metric food-metric">
+              <span>今日摄入</span>
+              <strong><span id="calorieTotal">0</span> kcal</strong>
+              <small id="mealCount">0 条饮食记录</small>
+            </article>
+            <article class="metric exercise-metric">
+              <span>今日运动</span>
+              <strong><span id="minuteTotal">0</span> min</strong>
+              <small id="workoutCount">0 条运动记录</small>
+            </article>
+            <article class="metric target-metric">
+              <span>今日最大可吃</span>
+              <strong><span id="maxCalories">--</span> kcal</strong>
+              <small id="remainingCalories">等待计算</small>
+            </article>
+            <article class="metric task-metric">
+              <span>今日任务</span>
+              <strong><span id="taskProgress">0/0</span></strong>
+              <small id="taskCount">0 条任务</small>
+            </article>
+          </div>
+
+          <section class="calorie-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Calorie target</p>
+                <h3>热量目标</h3>
+              </div>
+              <span id="calorieBasis">使用最新体重</span>
+            </div>
+            <div class="calorie-breakdown">
+              <div>
+                <span>基础代谢</span>
+                <strong><span id="bmrValue">--</span> kcal</strong>
+              </div>
+              <div>
+                <span>平衡热量</span>
+                <strong><span id="balanceCalories">--</span> kcal</strong>
+              </div>
+              <div>
+                <span>热量缺口</span>
+                <strong><span id="deficitValue">--</span> kcal</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="chart-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Weight trend</p>
+                <h3>体重趋势</h3>
+              </div>
+              <span id="chartRange">最近 30 天</span>
+            </div>
+            <canvas id="weightChart" width="900" height="320" aria-label="体重趋势图"></canvas>
+          </section>
+
+          <section class="split-layout">
+            <article class="log-panel">
+              <div class="panel-heading">
+                <h3>今日饮食</h3>
+                <span id="foodEmptyHint">等待记录</span>
+              </div>
+              <ul class="record-list" id="todayFoodList"></ul>
+            </article>
+            <article class="log-panel">
+              <div class="panel-heading">
+                <h3>今日运动</h3>
+                <span id="exerciseEmptyHint">等待记录</span>
+              </div>
+              <ul class="record-list" id="todayExerciseList"></ul>
+            </article>
+            <article class="log-panel task-panel">
+              <div class="panel-heading">
+                <h3>今日任务</h3>
+                <span id="taskEmptyHint">等待记录</span>
+              </div>
+              <ul class="record-list" id="todayTaskList"></ul>
+            </article>
+          </section>
+        </section>
+
+        <section class="view" id="recordsView">
+          <div class="form-grid">
+            <form class="entry-form" id="calorieTargetForm">
+              <div class="form-heading">
+                <h3>热量目标</h3>
+                <span>target</span>
+              </div>
+              <label>
+                性别
+                <select name="sex">
+                  <option value="male">男</option>
+                  <option value="female">女</option>
+                </select>
+              </label>
+              <label>
+                身高
+                <input name="height" type="number" min="100" max="230" step="1" required />
+              </label>
+              <label>
+                年龄
+                <input name="age" type="number" min="10" max="100" step="1" required />
+              </label>
+              <label>
+                今日类型
+                <select name="dayType">
+                  <option value="training">力训日</option>
+                  <option value="rest">休息日</option>
+                </select>
+              </label>
+              <label>
+                力训消耗
+                <input name="strengthCalories" type="number" min="0" max="1000" step="1" required />
+              </label>
+              <label>
+                日均有氧消耗
+                <input name="cardioCalories" type="number" min="0" max="2000" step="1" required />
+              </label>
+              <label>
+                热量缺口
+                <input name="calorieDeficit" type="number" min="0" max="2500" step="1" required />
+              </label>
+              <button type="submit">保存目标</button>
+            </form>
+
+            <form class="entry-form" id="weightForm">
+              <div class="form-heading">
+                <h3>体重</h3>
+                <span>kg</span>
+              </div>
+              <label>
+                日期
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                体重
+                <input name="weight" type="number" min="20" max="300" step="0.1" placeholder="例如 68.5" required />
+              </label>
+              <label>
+                备注
+                <input name="note" type="text" maxlength="40" placeholder="睡眠、状态、测量时间" />
+              </label>
+              <button type="submit">保存体重</button>
+            </form>
+
+            <form class="entry-form" id="foodForm">
+              <div class="form-heading">
+                <h3>饮食</h3>
+                <span>meal</span>
+              </div>
+              <label>
+                日期
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                餐次
+                <select name="meal">
+                  <option>早餐</option>
+                  <option>午餐</option>
+                  <option>晚餐</option>
+                  <option>加餐</option>
+                </select>
+              </label>
+              <label>
+                常吃食物
+                <select id="favoriteFoodSelect" name="favoriteFood">
+                  <option value="">手动输入</option>
+                </select>
+              </label>
+              <label>
+                食物
+                <input name="name" type="text" maxlength="50" placeholder="例如 鸡胸肉沙拉" required />
+              </label>
+              <label>
+                热量
+                <input name="calories" type="number" min="0" max="5000" step="1" placeholder="kcal" required />
+              </label>
+              <button type="submit">保存饮食</button>
+            </form>
+
+            <form class="entry-form" id="favoriteFoodForm">
+              <div class="form-heading">
+                <h3>常吃食物</h3>
+                <span>quick</span>
+              </div>
+              <label>
+                食物名称
+                <input name="name" type="text" maxlength="50" placeholder="例如 全麦面包 2 片" required />
+              </label>
+              <label>
+                克数
+                <input name="grams" type="number" min="0" max="5000" step="1" placeholder="g" required />
+              </label>
+              <label>
+                默认热量
+                <input name="calories" type="number" min="0" max="5000" step="1" placeholder="kcal" required />
+              </label>
+              <button type="submit">添加常吃食物</button>
+              <ul class="record-list compact-list" id="favoriteFoodList"></ul>
+            </form>
+
+            <form class="entry-form" id="exerciseForm">
+              <div class="form-heading">
+                <h3>运动</h3>
+                <span>move</span>
+              </div>
+              <label>
+                日期
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                类型
+                <input name="type" type="text" maxlength="40" placeholder="跑步、力量、瑜伽" required />
+              </label>
+              <label>
+                时长
+                <input name="minutes" type="number" min="1" max="600" step="1" placeholder="分钟" required />
+              </label>
+              <label>
+                强度
+                <select name="intensity">
+                  <option>轻松</option>
+                  <option>中等</option>
+                  <option>较强</option>
+                  <option>极限</option>
+                </select>
+              </label>
+              <button type="submit">保存运动</button>
+            </form>
+
+            <form class="entry-form" id="taskForm">
+              <div class="form-heading">
+                <h3>每日任务</h3>
+                <span>task</span>
+              </div>
+              <label>
+                日期
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                时段
+                <select name="time">
+                  <option value="">不指定</option>
+                  <option>上午</option>
+                  <option>中午</option>
+                  <option>下午</option>
+                  <option>晚上</option>
+                </select>
+              </label>
+              <label>
+                任务
+                <input name="title" type="text" maxlength="60" placeholder="例如 喝水 2L、散步 30 分钟" required />
+              </label>
+              <label>
+                分类
+                <select name="category">
+                  <option>重要且紧急</option>
+                  <option>重要不紧急</option>
+                  <option>不重要但紧急</option>
+                  <option>不重要不紧急</option>
+                </select>
+              </label>
+              <label class="checkbox-label">
+                <input name="done" type="checkbox" />
+                已完成
+              </label>
+              <button type="submit">保存任务</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="view" id="historyView">
+          <div class="panel-heading history-heading">
+            <div>
+              <p class="eyebrow">Timeline</p>
+              <h3>所有记录</h3>
+            </div>
+            <button class="danger-button" id="clearButton" type="button">清空数据</button>
+          </div>
+          <div class="history-list" id="historyList"></div>
+        </section>
+      </section>
+    </main>
+
+    <template id="emptyTemplate">
+      <div class="empty-state">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="48" />
+          <path d="M36 67c12-22 28-22 48 0M42 45h.5M77 45h.5" />
+        </svg>
+        <p>还没有记录</p>
+      </div>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
