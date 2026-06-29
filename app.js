@@ -20,6 +20,7 @@ const editing = {
   exerciseId: null,
   favoriteFoodId: null,
   taskId: null,
+  noteId: null,
 };
 
 const today = new Date();
@@ -60,9 +61,11 @@ const elements = {
   todayFoodList: document.querySelector("#todayFoodList"),
   todayExerciseList: document.querySelector("#todayExerciseList"),
   todayTaskList: document.querySelector("#todayTaskList"),
+  todayNoteList: document.querySelector("#todayNoteList"),
   foodEmptyHint: document.querySelector("#foodEmptyHint"),
   exerciseEmptyHint: document.querySelector("#exerciseEmptyHint"),
   taskEmptyHint: document.querySelector("#taskEmptyHint"),
+  noteEmptyHint: document.querySelector("#noteEmptyHint"),
   historyList: document.querySelector("#historyList"),
   emptyTemplate: document.querySelector("#emptyTemplate"),
   calorieTargetForm: document.querySelector("#calorieTargetForm"),
@@ -73,6 +76,7 @@ const elements = {
   favoriteFoodList: document.querySelector("#favoriteFoodList"),
   exerciseForm: document.querySelector("#exerciseForm"),
   taskForm: document.querySelector("#taskForm"),
+  noteForm: document.querySelector("#noteForm"),
   clearButton: document.querySelector("#clearButton"),
   exportButton: document.querySelector("#exportButton"),
   importInput: document.querySelector("#importInput"),
@@ -260,6 +264,27 @@ elements.taskForm.addEventListener("submit", (event) => {
   saveAndRender();
 });
 
+elements.noteForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const data = new FormData(event.currentTarget);
+  const payload = {
+    date: data.get("date"),
+    mood: data.get("mood"),
+    content: String(data.get("content")).trim(),
+  };
+  const existing = editing.noteId ? state.notes.find((item) => item.id === editing.noteId) : null;
+
+  if (existing) {
+    Object.assign(existing, payload);
+  } else {
+    state.notes.push({ id: crypto.randomUUID(), ...payload });
+  }
+
+  editing.noteId = null;
+  resetForm(event.currentTarget);
+  saveAndRender();
+});
+
 elements.clearButton.addEventListener("click", () => {
   if (!confirm("确定要清空所有记录吗？")) return;
   state.weights = [];
@@ -267,6 +292,7 @@ elements.clearButton.addEventListener("click", () => {
   state.exercises = [];
   state.favoriteFoods = [];
   state.tasks = [];
+  state.notes = [];
   saveAndRender();
 });
 
@@ -297,7 +323,15 @@ elements.importInput.addEventListener("change", async (event) => {
 render();
 
 function loadState() {
-  const fallback = { weights: [], foods: [], exercises: [], favoriteFoods: [], tasks: [], settings: DEFAULT_CALORIE_SETTINGS };
+  const fallback = {
+    weights: [],
+    foods: [],
+    exercises: [],
+    favoriteFoods: [],
+    tasks: [],
+    notes: [],
+    settings: DEFAULT_CALORIE_SETTINGS,
+  };
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     return {
@@ -306,6 +340,7 @@ function loadState() {
       exercises: normalizeRecords(stored?.exercises),
       favoriteFoods: normalizeFavoriteFoods(stored?.favoriteFoods),
       tasks: normalizeTasks(stored?.tasks),
+      notes: normalizeRecords(stored?.notes),
       settings: normalizeSettings(stored?.settings),
     };
   } catch {
@@ -356,6 +391,7 @@ function exportState() {
     exercises: state.exercises,
     favoriteFoods: state.favoriteFoods,
     tasks: state.tasks,
+    notes: state.notes,
     settings: state.settings,
   };
 }
@@ -366,6 +402,7 @@ function replaceState(data) {
   state.exercises = normalizeRecords(data?.exercises);
   state.favoriteFoods = normalizeFavoriteFoods(data?.favoriteFoods);
   state.tasks = normalizeTasks(data?.tasks);
+  state.notes = normalizeRecords(data?.notes);
   state.settings = normalizeSettings(data?.settings);
   populateCalorieTargetForm();
   saveAndRender();
@@ -542,6 +579,7 @@ function render() {
   const todayFoods = state.foods.filter((item) => item.date === todayKey);
   const todayExercises = state.exercises.filter((item) => item.date === todayKey);
   const todayTasks = sortTasks(state.tasks.filter((item) => item.date === todayKey));
+  const todayNotes = state.notes.filter((item) => item.date === todayKey);
   const completedTasks = todayTasks.filter((item) => item.done).length;
   const latestWeight = [...state.weights].sort((a, b) => b.date.localeCompare(a.date))[0];
   const previousWeight = [...state.weights].sort((a, b) => b.date.localeCompare(a.date))[1];
@@ -573,9 +611,11 @@ function render() {
   renderList(elements.todayFoodList, todayFoods, foodToItem);
   renderList(elements.todayExerciseList, todayExercises, exerciseToItem);
   renderList(elements.todayTaskList, todayTasks, taskToItem);
+  renderList(elements.todayNoteList, todayNotes, noteToItem);
   elements.foodEmptyHint.textContent = todayFoods.length ? `${todayFoods.length} 条` : "等待记录";
   elements.exerciseEmptyHint.textContent = todayExercises.length ? `${todayExercises.length} 条` : "等待记录";
   elements.taskEmptyHint.textContent = todayTasks.length ? `${completedTasks}/${todayTasks.length} 完成` : "等待记录";
+  elements.noteEmptyHint.textContent = todayNotes.length ? `${todayNotes.length} 条` : "等待记录";
 
   renderHistory();
   renderFavoriteFoods();
@@ -639,6 +679,16 @@ function taskToItem(task) {
   checkbox.addEventListener("change", () => toggleTask(task.id));
   detail.prepend(checkbox);
   return item;
+}
+
+function noteToItem(note) {
+  return makeItem({
+    title: note.content,
+    meta: note.mood,
+    value: "随心",
+    onEdit: () => editNote(note.id),
+    onDelete: () => deleteRecord("notes", note.id),
+  });
 }
 
 function weightToItem(weight) {
@@ -749,6 +799,18 @@ function editTask(id) {
   elements.taskForm.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+function editNote(id) {
+  const record = state.notes.find((item) => item.id === id);
+  if (!record) return;
+  editing.noteId = id;
+  switchView("records");
+  elements.noteForm.elements.date.value = record.date;
+  elements.noteForm.elements.mood.value = record.mood;
+  elements.noteForm.elements.content.value = record.content;
+  setSubmitText(elements.noteForm, "更新随心记录");
+  elements.noteForm.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 function getTaskCategoryLabel(category) {
   return TASK_CATEGORIES.includes(category) ? category : "未分类";
 }
@@ -817,6 +879,7 @@ function renderHistory() {
     ...state.foods.map((item) => item.date),
     ...state.exercises.map((item) => item.date),
     ...state.tasks.map((item) => item.date),
+    ...state.notes.map((item) => item.date),
   ]);
   const sortedDates = [...dates].sort((a, b) => b.localeCompare(a));
   elements.historyList.innerHTML = "";
@@ -833,11 +896,13 @@ function renderHistory() {
     const foods = state.foods.filter((item) => item.date === date);
     const exercises = state.exercises.filter((item) => item.date === date);
     const tasks = sortTasks(state.tasks.filter((item) => item.date === date));
+    const notes = state.notes.filter((item) => item.date === date);
     const records = [
       ...weights.map(weightToItem),
       ...foods.map(foodToItem),
       ...exercises.map(exerciseToItem),
       ...tasks.map(taskToItem),
+      ...notes.map(noteToItem),
     ];
 
     section.innerHTML = `<h4>${date}</h4>`;

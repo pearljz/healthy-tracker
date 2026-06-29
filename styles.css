@@ -30,7 +30,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -629,6 +630,23 @@ button {
   order: 6;
 }
 
+#noteForm {
+  order: 5;
+}
+
+#calorieTargetForm {
+  order: 6;
+}
+
+#favoriteFoodForm {
+  order: 7;
+}
+
+.note-panel {
+  order: 0;
+  border-color: rgba(255, 155, 55, 0.34);
+}
+
 .task-check {
   display: flex;
   align-items: center;
@@ -676,7 +694,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
@@ -688,9 +707,15 @@ select {
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible {
   outline: 3px solid rgba(112, 184, 159, 0.35);
   outline-offset: 2px;
+}
+
+textarea {
+  min-height: 132px;
+  resize: vertical;
 }
 
 .entry-form button,

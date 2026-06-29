@@ -179,6 +179,13 @@
               </div>
               <ul class="record-list" id="todayTaskList"></ul>
             </article>
+            <article class="log-panel note-panel">
+              <div class="panel-heading">
+                <h3>今日随心记录</h3>
+                <span id="noteEmptyHint">等待记录</span>
+              </div>
+              <ul class="record-list" id="todayNoteList"></ul>
+            </article>
           </section>
         </section>
 
@@ -368,6 +375,33 @@
                 已完成
               </label>
               <button type="submit">保存任务</button>
+            </form>
+
+            <form class="entry-form" id="noteForm">
+              <div class="form-heading">
+                <h3>随心记录</h3>
+                <span>note</span>
+              </div>
+              <label>
+                日期
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                心情
+                <select name="mood">
+                  <option>平静</option>
+                  <option>开心</option>
+                  <option>充实</option>
+                  <option>疲惫</option>
+                  <option>焦虑</option>
+                  <option>感恩</option>
+                </select>
+              </label>
+              <label>
+                内容
+                <textarea name="content" maxlength="500" placeholder="今天想记点什么..." required></textarea>
+              </label>
+              <button type="submit">保存随心记录</button>
             </form>
           </div>
         </section>
