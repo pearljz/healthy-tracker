@@ -56,6 +56,13 @@ const elements = {
   bmrValue: document.querySelector("#bmrValue"),
   balanceCalories: document.querySelector("#balanceCalories"),
   deficitValue: document.querySelector("#deficitValue"),
+  macroCalories: document.querySelector("#macroCalories"),
+  carbTotal: document.querySelector("#carbTotal"),
+  proteinTotal: document.querySelector("#proteinTotal"),
+  fatTotal: document.querySelector("#fatTotal"),
+  carbBar: document.querySelector("#carbBar"),
+  proteinBar: document.querySelector("#proteinBar"),
+  fatBar: document.querySelector("#fatBar"),
   chart: document.querySelector("#weightChart"),
   chartRange: document.querySelector("#chartRange"),
   todayFoodList: document.querySelector("#todayFoodList"),
@@ -146,6 +153,9 @@ elements.favoriteFoodSelect.addEventListener("change", (event) => {
   if (!favorite) return;
   elements.foodForm.name.value = favorite.name;
   elements.foodForm.calories.value = favorite.calories;
+  elements.foodForm.carbs.value = favorite.carbs || "";
+  elements.foodForm.protein.value = favorite.protein || "";
+  elements.foodForm.fat.value = favorite.fat || "";
 });
 
 elements.weightForm.addEventListener("submit", (event) => {
@@ -181,6 +191,9 @@ elements.foodForm.addEventListener("submit", (event) => {
     meal: selectedMeal,
     name: String(data.get("name")).trim(),
     calories: Number(data.get("calories")),
+    carbs: Number(data.get("carbs") || 0),
+    protein: Number(data.get("protein") || 0),
+    fat: Number(data.get("fat") || 0),
   };
   const existing = editing.foodId ? state.foods.find((item) => item.id === editing.foodId) : null;
 
@@ -203,6 +216,9 @@ elements.favoriteFoodForm.addEventListener("submit", (event) => {
     name: String(data.get("name")).trim(),
     grams: Number(data.get("grams")),
     calories: Number(data.get("calories")),
+    carbs: Number(data.get("carbs") || 0),
+    protein: Number(data.get("protein") || 0),
+    fat: Number(data.get("fat") || 0),
   };
   const existing = editing.favoriteFoodId
     ? state.favoriteFoods.find((item) => item.id === editing.favoriteFoodId)
@@ -336,7 +352,7 @@ function loadState() {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     return {
       weights: normalizeRecords(stored?.weights),
-      foods: normalizeRecords(stored?.foods),
+      foods: normalizeFoods(stored?.foods),
       exercises: normalizeRecords(stored?.exercises),
       favoriteFoods: normalizeFavoriteFoods(stored?.favoriteFoods),
       tasks: normalizeTasks(stored?.tasks),
@@ -360,6 +376,18 @@ function normalizeFavoriteFoods(records) {
   return normalizeRecords(records).map((record) => ({
     ...record,
     grams: Number(record.grams || 0),
+    carbs: Number(record.carbs || 0),
+    protein: Number(record.protein || 0),
+    fat: Number(record.fat || 0),
+  }));
+}
+
+function normalizeFoods(records) {
+  return normalizeRecords(records).map((record) => ({
+    ...record,
+    carbs: Number(record.carbs || 0),
+    protein: Number(record.protein || 0),
+    fat: Number(record.fat || 0),
   }));
 }
 
@@ -398,7 +426,7 @@ function exportState() {
 
 function replaceState(data) {
   state.weights = normalizeRecords(data?.weights);
-  state.foods = normalizeRecords(data?.foods);
+  state.foods = normalizeFoods(data?.foods);
   state.exercises = normalizeRecords(data?.exercises);
   state.favoriteFoods = normalizeFavoriteFoods(data?.favoriteFoods);
   state.tasks = normalizeTasks(data?.tasks);
@@ -586,6 +614,7 @@ function render() {
   const calorieTotal = sum(todayFoods, "calories");
   const minuteTotal = sum(todayExercises, "minutes");
   const calorieTarget = calculateCalorieTarget(latestWeight, calorieTotal);
+  const macroTotals = calculateMacroTotals(todayFoods);
 
   elements.todayWeight.textContent = latestWeight ? formatNumber(latestWeight.weight) : "--";
   elements.latestWeight.textContent = latestWeight ? formatNumber(latestWeight.weight) : "--";
@@ -607,6 +636,7 @@ function render() {
   elements.bmrValue.textContent = calorieTarget.bmr;
   elements.balanceCalories.textContent = calorieTarget.balanceCalories;
   elements.deficitValue.textContent = calorieTarget.deficit;
+  renderMacros(macroTotals);
 
   renderList(elements.todayFoodList, todayFoods, foodToItem);
   renderList(elements.todayExerciseList, todayExercises, exerciseToItem);
@@ -632,9 +662,10 @@ function renderList(list, records, mapper) {
 }
 
 function foodToItem(food) {
+  const macroText = formatFoodMacros(food);
   return makeItem({
     title: food.name,
-    meta: food.meal,
+    meta: macroText ? `${food.meal} · ${macroText}` : food.meal,
     value: `${food.calories} kcal`,
     onEdit: () => editFood(food.id),
     onDelete: () => deleteRecord("foods", food.id),
@@ -644,7 +675,7 @@ function foodToItem(food) {
 function favoriteFoodToItem(food) {
   return makeItem({
     title: food.name,
-    meta: `${food.grams || 0} g`,
+    meta: [`${food.grams || 0} g`, formatFoodMacros(food)].filter(Boolean).join(" · "),
     value: `${food.calories} kcal`,
     onEdit: () => editFavoriteFood(food.id),
     onDelete: () => deleteRecord("favoriteFoods", food.id),
@@ -755,6 +786,9 @@ function editFood(id) {
   elements.foodForm.meal.value = record.meal;
   elements.foodForm.name.value = record.name;
   elements.foodForm.calories.value = record.calories;
+  elements.foodForm.carbs.value = record.carbs || "";
+  elements.foodForm.protein.value = record.protein || "";
+  elements.foodForm.fat.value = record.fat || "";
   setSubmitText(elements.foodForm, "更新饮食");
   elements.foodForm.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -766,6 +800,9 @@ function editFavoriteFood(id) {
   elements.favoriteFoodForm.name.value = record.name;
   elements.favoriteFoodForm.grams.value = record.grams || 0;
   elements.favoriteFoodForm.calories.value = record.calories;
+  elements.favoriteFoodForm.carbs.value = record.carbs || "";
+  elements.favoriteFoodForm.protein.value = record.protein || "";
+  elements.favoriteFoodForm.fat.value = record.fat || "";
   setSubmitText(elements.favoriteFoodForm, "更新常吃食物");
   elements.favoriteFoodForm.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -866,7 +903,8 @@ function renderFavoriteFoods() {
   state.favoriteFoods.forEach((food) => {
     const option = document.createElement("option");
     option.value = food.id;
-    option.textContent = `${food.name} (${food.grams || 0}g, ${food.calories} kcal)`;
+    const macros = formatFoodMacros(food);
+    option.textContent = `${food.name} (${food.grams || 0}g, ${food.calories} kcal${macros ? `, ${macros}` : ""})`;
     elements.favoriteFoodSelect.append(option);
   });
 
@@ -1156,6 +1194,37 @@ function calculateCalorieTarget(latestWeight, todayCalories) {
     maxCalories: Math.round(maxCalories),
     remaining: Math.round(maxCalories - todayCalories),
   };
+}
+
+function calculateMacroTotals(foods) {
+  const carbs = sum(foods, "carbs");
+  const protein = sum(foods, "protein");
+  const fat = sum(foods, "fat");
+  return {
+    carbs,
+    protein,
+    fat,
+    calories: carbs * 4 + protein * 4 + fat * 9,
+  };
+}
+
+function renderMacros(macros) {
+  const maxMacro = Math.max(macros.carbs, macros.protein, macros.fat, 1);
+  elements.carbTotal.textContent = formatNumber(macros.carbs);
+  elements.proteinTotal.textContent = formatNumber(macros.protein);
+  elements.fatTotal.textContent = formatNumber(macros.fat);
+  elements.macroCalories.textContent = `${Math.round(macros.calories)} kcal 来自碳蛋脂`;
+  elements.carbBar.style.width = `${Math.max(4, (macros.carbs / maxMacro) * 100)}%`;
+  elements.proteinBar.style.width = `${Math.max(4, (macros.protein / maxMacro) * 100)}%`;
+  elements.fatBar.style.width = `${Math.max(4, (macros.fat / maxMacro) * 100)}%`;
+}
+
+function formatFoodMacros(food) {
+  const parts = [];
+  if (Number(food.carbs || 0) > 0) parts.push(`碳${formatNumber(food.carbs)}g`);
+  if (Number(food.protein || 0) > 0) parts.push(`蛋${formatNumber(food.protein)}g`);
+  if (Number(food.fat || 0) > 0) parts.push(`脂${formatNumber(food.fat)}g`);
+  return parts.join(" / ");
 }
 
 function sum(records, key) {

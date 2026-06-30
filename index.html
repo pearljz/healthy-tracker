@@ -146,6 +146,39 @@
             </div>
           </section>
 
+          <section class="macro-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Macros</p>
+                <h3>今日碳蛋脂</h3>
+              </div>
+              <span id="macroCalories">0 kcal 来自碳蛋脂</span>
+            </div>
+            <div class="macro-bars">
+              <div class="macro-row macro-carb">
+                <div>
+                  <span>碳水</span>
+                  <strong><span id="carbTotal">0</span> g</strong>
+                </div>
+                <div class="macro-track"><span id="carbBar"></span></div>
+              </div>
+              <div class="macro-row macro-protein">
+                <div>
+                  <span>蛋白质</span>
+                  <strong><span id="proteinTotal">0</span> g</strong>
+                </div>
+                <div class="macro-track"><span id="proteinBar"></span></div>
+              </div>
+              <div class="macro-row macro-fat">
+                <div>
+                  <span>脂肪</span>
+                  <strong><span id="fatTotal">0</span> g</strong>
+                </div>
+                <div class="macro-track"><span id="fatBar"></span></div>
+              </div>
+            </div>
+          </section>
+
           <section class="chart-panel">
             <div class="panel-heading">
               <div>
@@ -285,6 +318,20 @@
                 热量
                 <input name="calories" type="number" min="0" max="5000" step="1" placeholder="kcal" required />
               </label>
+              <div class="macro-input-grid">
+                <label>
+                  碳水
+                  <input name="carbs" type="number" min="0" max="1000" step="0.1" placeholder="g" />
+                </label>
+                <label>
+                  蛋白质
+                  <input name="protein" type="number" min="0" max="1000" step="0.1" placeholder="g" />
+                </label>
+                <label>
+                  脂肪
+                  <input name="fat" type="number" min="0" max="1000" step="0.1" placeholder="g" />
+                </label>
+              </div>
               <button type="submit">保存饮食</button>
             </form>
 
@@ -305,6 +352,20 @@
                 默认热量
                 <input name="calories" type="number" min="0" max="5000" step="1" placeholder="kcal" required />
               </label>
+              <div class="macro-input-grid">
+                <label>
+                  碳水
+                  <input name="carbs" type="number" min="0" max="1000" step="0.1" placeholder="g" />
+                </label>
+                <label>
+                  蛋白质
+                  <input name="protein" type="number" min="0" max="1000" step="0.1" placeholder="g" />
+                </label>
+                <label>
+                  脂肪
+                  <input name="fat" type="number" min="0" max="1000" step="0.1" placeholder="g" />
+                </label>
+              </div>
               <button type="submit">添加常吃食物</button>
               <ul class="record-list compact-list" id="favoriteFoodList"></ul>
             </form>
@@ -430,7 +491,7 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=20260629-1"></script>
-    <script src="app.js?v=20260629-1"></script>
+    <script src="supabase-config.js?v=20260630-1"></script>
+    <script src="app.js?v=20260630-1"></script>
   </body>
 </html>
