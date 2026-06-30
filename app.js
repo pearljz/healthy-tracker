@@ -10,6 +10,26 @@ const DEFAULT_CALORIE_SETTINGS = {
 };
 const TASK_CATEGORIES = ["重要且紧急", "重要不紧急", "不重要但紧急", "不重要不紧急"];
 const TASK_TIME_BLOCKS = ["上午", "中午", "下午", "晚上"];
+const NUTRITION_DATABASE = [
+  { names: ["米饭", "白米饭", "熟米饭"], calories: 116, carbs: 25.9, protein: 2.6, fat: 0.3 },
+  { names: ["糙米饭", "糙米"], calories: 111, carbs: 23, protein: 2.6, fat: 0.9 },
+  { names: ["燕麦", "燕麦片"], calories: 379, carbs: 67.7, protein: 13.2, fat: 6.5 },
+  { names: ["鸡胸肉", "鸡胸"], calories: 165, carbs: 0, protein: 31, fat: 3.6 },
+  { names: ["鸡蛋", "全蛋"], calories: 143, carbs: 0.7, protein: 12.6, fat: 9.5 },
+  { names: ["牛奶", "纯牛奶"], calories: 61, carbs: 4.8, protein: 3.2, fat: 3.3 },
+  { names: ["酸奶", "无糖酸奶"], calories: 63, carbs: 7, protein: 5.3, fat: 1.6 },
+  { names: ["香蕉"], calories: 89, carbs: 22.8, protein: 1.1, fat: 0.3 },
+  { names: ["苹果"], calories: 52, carbs: 13.8, protein: 0.3, fat: 0.2 },
+  { names: ["红薯", "地瓜"], calories: 86, carbs: 20.1, protein: 1.6, fat: 0.1 },
+  { names: ["土豆", "马铃薯"], calories: 77, carbs: 17.5, protein: 2, fat: 0.1 },
+  { names: ["西兰花"], calories: 34, carbs: 6.6, protein: 2.8, fat: 0.4 },
+  { names: ["牛肉", "瘦牛肉"], calories: 250, carbs: 0, protein: 26, fat: 15 },
+  { names: ["三文鱼"], calories: 208, carbs: 0, protein: 20, fat: 13 },
+  { names: ["豆腐"], calories: 76, carbs: 1.9, protein: 8.1, fat: 4.8 },
+  { names: ["虾", "虾仁"], calories: 99, carbs: 0.2, protein: 24, fat: 0.3 },
+  { names: ["面包", "全麦面包"], calories: 247, carbs: 41, protein: 13, fat: 4.2 },
+  { names: ["面条", "煮面条"], calories: 138, carbs: 25, protein: 4.5, fat: 2.1 },
+];
 
 const state = loadState();
 let supabaseClient = null;
@@ -84,6 +104,8 @@ const elements = {
   exerciseForm: document.querySelector("#exerciseForm"),
   taskForm: document.querySelector("#taskForm"),
   noteForm: document.querySelector("#noteForm"),
+  nutritionLookupButton: document.querySelector("#nutritionLookupButton"),
+  nutritionLookupHint: document.querySelector("#nutritionLookupHint"),
   clearButton: document.querySelector("#clearButton"),
   exportButton: document.querySelector("#exportButton"),
   importInput: document.querySelector("#importInput"),
@@ -152,10 +174,15 @@ elements.favoriteFoodSelect.addEventListener("change", (event) => {
   const favorite = state.favoriteFoods.find((item) => item.id === event.target.value);
   if (!favorite) return;
   elements.foodForm.name.value = favorite.name;
+  elements.foodForm.grams.value = favorite.grams || "";
   elements.foodForm.calories.value = favorite.calories;
   elements.foodForm.carbs.value = favorite.carbs || "";
   elements.foodForm.protein.value = favorite.protein || "";
   elements.foodForm.fat.value = favorite.fat || "";
+});
+
+elements.nutritionLookupButton.addEventListener("click", () => {
+  estimateFoodNutrition();
 });
 
 elements.weightForm.addEventListener("submit", (event) => {
@@ -190,6 +217,7 @@ elements.foodForm.addEventListener("submit", (event) => {
     date: data.get("date"),
     meal: selectedMeal,
     name: String(data.get("name")).trim(),
+    grams: Number(data.get("grams") || 0),
     calories: Number(data.get("calories")),
     carbs: Number(data.get("carbs") || 0),
     protein: Number(data.get("protein") || 0),
@@ -385,6 +413,7 @@ function normalizeFavoriteFoods(records) {
 function normalizeFoods(records) {
   return normalizeRecords(records).map((record) => ({
     ...record,
+    grams: Number(record.grams || 0),
     carbs: Number(record.carbs || 0),
     protein: Number(record.protein || 0),
     fat: Number(record.fat || 0),
@@ -665,7 +694,7 @@ function foodToItem(food) {
   const macroText = formatFoodMacros(food);
   return makeItem({
     title: food.name,
-    meta: macroText ? `${food.meal} · ${macroText}` : food.meal,
+    meta: [food.meal, food.grams ? `${food.grams}g` : "", macroText].filter(Boolean).join(" · "),
     value: `${food.calories} kcal`,
     onEdit: () => editFood(food.id),
     onDelete: () => deleteRecord("foods", food.id),
@@ -785,6 +814,7 @@ function editFood(id) {
   elements.foodForm.date.value = record.date;
   elements.foodForm.meal.value = record.meal;
   elements.foodForm.name.value = record.name;
+  elements.foodForm.grams.value = record.grams || "";
   elements.foodForm.calories.value = record.calories;
   elements.foodForm.carbs.value = record.carbs || "";
   elements.foodForm.protein.value = record.protein || "";
@@ -1206,6 +1236,40 @@ function calculateMacroTotals(foods) {
     fat,
     calories: carbs * 4 + protein * 4 + fat * 9,
   };
+}
+
+function estimateFoodNutrition() {
+  const name = String(elements.foodForm.name.value || "").trim();
+  const grams = Number(elements.foodForm.grams.value || 100);
+  const match = findNutritionMatch(name);
+
+  if (!name) {
+    elements.nutritionLookupHint.textContent = "先输入食物名称。";
+    return;
+  }
+
+  if (!match) {
+    elements.nutritionLookupHint.textContent = "暂时没匹配到，可手动填写后保存为常吃食物。";
+    return;
+  }
+
+  const factor = grams > 0 ? grams / 100 : 1;
+  elements.foodForm.calories.value = Math.round(match.calories * factor);
+  elements.foodForm.carbs.value = roundMacro(match.carbs * factor);
+  elements.foodForm.protein.value = roundMacro(match.protein * factor);
+  elements.foodForm.fat.value = roundMacro(match.fat * factor);
+  elements.nutritionLookupHint.textContent = `已按 ${grams || 100}g ${match.names[0]} 估算。`;
+}
+
+function findNutritionMatch(name) {
+  const normalizedName = name.toLowerCase();
+  return NUTRITION_DATABASE.find((item) =>
+    item.names.some((alias) => normalizedName.includes(alias.toLowerCase()) || alias.toLowerCase().includes(normalizedName)),
+  );
+}
+
+function roundMacro(value) {
+  return Number(value.toFixed(1));
 }
 
 function renderMacros(macros) {

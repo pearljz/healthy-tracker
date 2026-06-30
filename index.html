@@ -315,6 +315,10 @@
                 <input name="name" type="text" maxlength="50" placeholder="例如 鸡胸肉沙拉" required />
               </label>
               <label>
+                克数
+                <input name="grams" type="number" min="0" max="5000" step="1" placeholder="g" />
+              </label>
+              <label>
                 热量
                 <input name="calories" type="number" min="0" max="5000" step="1" placeholder="kcal" required />
               </label>
@@ -332,6 +336,8 @@
                   <input name="fat" type="number" min="0" max="1000" step="0.1" placeholder="g" />
                 </label>
               </div>
+              <button class="secondary-button" id="nutritionLookupButton" type="button">自动估算碳蛋脂</button>
+              <span class="form-hint" id="nutritionLookupHint">按食物名和克数估算，默认按 100g</span>
               <button type="submit">保存饮食</button>
             </form>
 
@@ -491,7 +497,7 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=20260630-1"></script>
-    <script src="app.js?v=20260630-1"></script>
+    <script src="supabase-config.js?v=20260630-2"></script>
+    <script src="app.js?v=20260630-2"></script>
   </body>
 </html>

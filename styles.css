@@ -810,6 +810,18 @@ textarea {
   background: var(--leaf);
 }
 
+.entry-form .secondary-button {
+  border: 1px solid rgba(0, 138, 85, 0.18);
+  background: #edf8f1;
+  color: #008a55;
+}
+
+.form-hint {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .danger-button {
   padding: 0 14px;
   background: var(--coral);
