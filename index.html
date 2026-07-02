@@ -279,6 +279,20 @@
                 体重
                 <input name="weight" type="number" min="20" max="300" step="0.1" placeholder="例如 68.5" required />
               </label>
+              <label class="checkbox-label">
+                <input name="bowelMovement" type="checkbox" />
+                今日已排便
+              </label>
+              <div class="time-range-grid">
+                <label>
+                  入睡时间
+                  <input name="sleepStart" type="time" />
+                </label>
+                <label>
+                  醒来时间
+                  <input name="sleepEnd" type="time" />
+                </label>
+              </div>
               <label>
                 备注
                 <input name="note" type="text" maxlength="40" placeholder="睡眠、状态、测量时间" />
@@ -497,7 +511,7 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=20260630-3"></script>
-    <script src="app.js?v=20260630-3"></script>
+    <script src="supabase-config.js?v=20260703-1"></script>
+    <script src="app.js?v=20260703-1"></script>
   </body>
 </html>

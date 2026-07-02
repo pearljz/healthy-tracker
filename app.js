@@ -191,6 +191,9 @@ elements.weightForm.addEventListener("submit", (event) => {
   const date = data.get("date");
   const weight = Number(data.get("weight"));
   const note = String(data.get("note") || "").trim();
+  const bowelMovement = data.get("bowelMovement") === "on";
+  const sleepStart = data.get("sleepStart") || "";
+  const sleepEnd = data.get("sleepEnd") || "";
   const existing = editing.weightId
     ? state.weights.find((item) => item.id === editing.weightId)
     : state.weights.find((item) => item.date === date);
@@ -199,8 +202,11 @@ elements.weightForm.addEventListener("submit", (event) => {
     existing.date = date;
     existing.weight = weight;
     existing.note = note;
+    existing.bowelMovement = bowelMovement;
+    existing.sleepStart = sleepStart;
+    existing.sleepEnd = sleepEnd;
   } else {
-    state.weights.push({ id: crypto.randomUUID(), date, weight, note });
+    state.weights.push({ id: crypto.randomUUID(), date, weight, note, bowelMovement, sleepStart, sleepEnd });
   }
 
   editing.weightId = null;
@@ -379,7 +385,7 @@ function loadState() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     return {
-      weights: normalizeRecords(stored?.weights),
+      weights: normalizeWeights(stored?.weights),
       foods: normalizeFoods(stored?.foods),
       exercises: normalizeRecords(stored?.exercises),
       favoriteFoods: normalizeFavoriteFoods(stored?.favoriteFoods),
@@ -397,6 +403,15 @@ function normalizeRecords(records) {
   return records.map((record) => ({
     ...record,
     id: record.id || crypto.randomUUID(),
+  }));
+}
+
+function normalizeWeights(records) {
+  return normalizeRecords(records).map((record) => ({
+    ...record,
+    bowelMovement: Boolean(record.bowelMovement),
+    sleepStart: record.sleepStart || "",
+    sleepEnd: record.sleepEnd || "",
   }));
 }
 
@@ -454,7 +469,7 @@ function exportState() {
 }
 
 function replaceState(data) {
-  state.weights = normalizeRecords(data?.weights);
+  state.weights = normalizeWeights(data?.weights);
   state.foods = normalizeFoods(data?.foods);
   state.exercises = normalizeRecords(data?.exercises);
   state.favoriteFoods = normalizeFavoriteFoods(data?.favoriteFoods);
@@ -754,7 +769,7 @@ function noteToItem(note) {
 function weightToItem(weight) {
   return makeItem({
     title: "体重",
-    meta: weight.note || "当天记录",
+    meta: formatWeightMeta(weight),
     value: `${formatNumber(weight.weight)} kg`,
     onEdit: () => editWeight(weight.id),
     onDelete: () => deleteRecord("weights", weight.id),
@@ -801,6 +816,9 @@ function editWeight(id) {
   switchView("records");
   elements.weightForm.date.value = record.date;
   elements.weightForm.weight.value = record.weight;
+  elements.weightForm.bowelMovement.checked = Boolean(record.bowelMovement);
+  elements.weightForm.sleepStart.value = record.sleepStart || "";
+  elements.weightForm.sleepEnd.value = record.sleepEnd || "";
   elements.weightForm.note.value = record.note || "";
   setSubmitText(elements.weightForm, "更新体重");
   elements.weightForm.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1289,6 +1307,15 @@ function formatFoodMacros(food) {
   if (Number(food.protein || 0) > 0) parts.push(`蛋${formatNumber(food.protein)}g`);
   if (Number(food.fat || 0) > 0) parts.push(`脂${formatNumber(food.fat)}g`);
   return parts.join(" / ");
+}
+
+function formatWeightMeta(weight) {
+  const parts = [weight.bowelMovement ? "已排便" : "未排便"];
+  if (weight.sleepStart || weight.sleepEnd) {
+    parts.push(`睡眠 ${weight.sleepStart || "--:--"}-${weight.sleepEnd || "--:--"}`);
+  }
+  if (weight.note) parts.push(weight.note);
+  return parts.join(" · ");
 }
 
 function sum(records, key) {
